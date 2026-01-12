@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RDI - Login</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+
+  <link rel="stylesheet" href="styles.css"/> 
+</head>
+<body>
+
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+      <img src="logo-green.png" alt="RDI Logo" class="login-logo">
+      <h1 class="login-title">Bem-vindo</h1>
+      <p class="login-subtitle">Entre com suas credenciais para continuar</p>
+      
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label" for="email">E-mail</label>
+          <input type="email" id="email" class="form-input" placeholder="seu@email.com" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="password">Senha</label>
+          <input type="password" id="password" class="form-input" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" id="submitLogin" class="btn-primary">Entrar</button>
+        
+        <div id="loginError" class="login-error">
+          <i class="bi bi-exclamation-circle"></i> Credenciais inválidas.
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <header>
+    <div class="brand-text">
+      <img src="logo-green.png" width="auto" height="30" alt="Logo">
+    </div>
+    <div class="header-actions">
+      <small id="authStatus" style="color:var(--muted); font-size:0.8rem;">Gestor Conectado</small>
+      <button class="logout-btn" id="btnLogout">Sair</button>
+    </div>
+  </header>
+
+  <div class="dashboard-container">
+    
+    <div class="image-column">
+      <div class="circular-viewer">
+        <i class="bi bi-image placeholder-icon"></i>
+        <img id="pivotImage" src="" alt="Imagem do Pivô" style="opacity: 0; z-index: 2; position: relative;">
+        <div id="imgLoader" class="image-loader d-none">
+          <div class="spinner"></div>
+        </div>
+      </div>
+      
+      <div class="map-label">
+        Visualização de Satélite<br>
+        <small id="currentInfo" style="font-weight:400">Nenhum dado carregado</small>
+      </div>
+    </div>
+
+    <div class="data-column">
+      
+      <div>
+        <div class="section-title">Seleção</div>
+        <div class="search-stack">
+          
+          <div class="search-group">
+            <label class="search-label">Fazenda</label>
+            <select id="farmSelect" class="select-clean" disabled>
+              <option value="">Aguardando login...</option>
+            </select>
+          </div>
+
+          <div class="search-group">
+            <label class="search-label">Equipamento</label>
+            <select id="equipmentSelect" class="select-clean" disabled>
+              <option value="">Selecione a fazenda...</option>
+            </select>
+          </div>
+
+          <button id="btnSearch" class="btn-primary" disabled style="margin-top: 10px;">
+            <i class="bi bi-search"></i> Buscar Índices
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">Datas Disponíveis</div>
+        <div class="date-card">
+          <label>Data da imagem</label>
+          <select id="dateSelect" class="date-select" disabled>
+            <option>Selecione...</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="bandsContainer" class="indices-grid">
+        <div style="color:var(--muted); font-size:0.9rem;">Selecione um equipamento e clique em buscar.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
