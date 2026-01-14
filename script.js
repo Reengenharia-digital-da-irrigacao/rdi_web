@@ -32,7 +32,9 @@ let state = {
   
   selectedDate: null,
   selectedBand: null,
-  lastObjectUrl: null
+  lastObjectUrl: null,
+
+  chartInstance: null
 };
 
 // Elementos DOM
@@ -56,7 +58,16 @@ const els = {
   bandsContainer: document.getElementById("bandsContainer"),
   pivotImage: document.getElementById("pivotImage"),
   imgLoader: document.getElementById("imgLoader"),
-  currentInfo: document.getElementById("currentInfo")
+  currentInfo: document.getElementById("currentInfo"),
+
+  // RDI
+  analysisSection: document.getElementById("analysisSection"),
+  rdiValue: document.getElementById("rdiValue"),
+  rdiStatus: document.getElementById("rdiStatus"),
+  metricCard: document.querySelector(".metric-card"),
+
+  // CHART
+  chartContainer: document.getElementById("chartContainer"),
 };
 
 // -------------------------
@@ -188,7 +199,7 @@ els.farmSelect.addEventListener("change", async () => {
       const opt = document.createElement("option");
       opt.value = eq.id;
       // Exibe Nome e gpkg_reference para ajudar na identificação
-      opt.textContent = `${eq.name} (Ref: ${eq.gpkg_reference})`;
+      opt.textContent = `${eq.name}`;
       // Salva o id_ana como data attribute para fácil acesso
       opt.dataset.ana = eq.gpkg_reference;
       els.equipmentSelect.appendChild(opt);
@@ -209,6 +220,7 @@ els.equipmentSelect.addEventListener("change", () => {
   if (!eqId) {
     state.currentIdAna = null;
     els.btnSearch.disabled = true;
+    els.chartContainer.style.display = "none"; // Esconde gráfico
     return;
   }
 
@@ -219,11 +231,131 @@ els.equipmentSelect.addEventListener("change", () => {
   if (anaRef) {
     state.currentIdAna = anaRef;
     els.btnSearch.disabled = false;
+    loadRdiSerie(anaRef);
   } else {
     alert("Este equipamento não possui referência GPKG (ID ANA).");
     els.btnSearch.disabled = true;
   }
 });
+
+// -------------------------
+// CHART LOGIC (NOVA)
+// -------------------------
+
+async function loadRdiSerie(idAna) {
+  // Mostra container mas com loading (opcional, o ApexCharts anima a entrada)
+  els.chartContainer.style.display = "block";
+  
+  try {
+    const url = `${CONFIG.baseUrl}/api/equipments/tiff-files/rdi-serie/?id_ana=${idAna}`;
+    // A API retorna diretamente a lista: [{date: '...', value: ...}, ...]
+    const data = await fetchJson(url);
+
+    if (!data || data.length === 0) {
+       els.chartContainer.style.display = "none";
+       return;
+    }
+
+    renderChart(data);
+
+  } catch (error) {
+    console.error("Erro ao carregar série histórica:", error);
+    els.chartContainer.style.display = "none";
+  }
+}
+
+function renderChart(serieData) {
+  // 1. Formatar dados para formato [Timestamp, Valor]
+  // O ApexCharts trabalha melhor com Timestamps no eixo X para Zoom
+  const seriesFormatted = serieData.map(item => {
+    return [new Date(item.date).getTime(), parseFloat(item.value)];
+  });
+
+  // 2. Configurações do Gráfico
+  const options = {
+    series: [{
+      name: 'RDI',
+      data: seriesFormatted
+    }],
+    chart: {
+      type: 'area', // Área deixa visualmente mais rico que linha simples
+      height: 250,
+      fontFamily: 'Inter, sans-serif',
+      toolbar: {
+        show: true,
+        tools: {
+          download: false,
+          selection: true,
+          zoom: true,
+          zoomin: true,
+          zoomout: true,
+          pan: true,
+          reset: true
+        },
+        autoSelected: 'zoom' 
+      },
+      animations: {
+        enabled: true
+      }
+    },
+    colors: ['#00a99d'], // Cor primária do seu CSS
+    dataLabels: {
+      enabled: false // Desabilita label em cada ponto para não poluir
+    },
+    stroke: {
+      curve: 'smooth',
+      width: 2
+    },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.7,
+        opacityTo: 0.1, // Degradê suave
+        stops: [0, 90, 100]
+      }
+    },
+    xaxis: {
+      type: 'datetime', // Importante para entender as datas
+      tooltip: {
+        enabled: false
+      },
+      labels: {
+        format: 'dd/MM/yy'
+      }
+    },
+    yaxis: {
+      min: 0,
+      max: 100, // Assumindo que RDI é porcentagem ou índice 0-100
+      tickAmount: 5
+    },
+    tooltip: {
+      x: {
+        format: 'dd MMM yyyy'
+      },
+      y: {
+        formatter: function (value) {
+          return value.toFixed(2);
+        }
+      }
+    },
+    grid: {
+      borderColor: '#f1f1f1',
+    }
+  };
+
+  // 3. Renderização ou Atualização
+  if (state.chartInstance) {
+    // Se já existe, apenas atualiza os dados (animação suave)
+    state.chartInstance.updateSeries([{
+      data: seriesFormatted
+    }]);
+  } else {
+    // Se não existe, cria novo
+    state.chartInstance = new ApexCharts(document.querySelector("#rdiChart"), options);
+    state.chartInstance.render();
+  }
+}
 
 
 // -------------------------
@@ -333,6 +465,9 @@ function setSelectedDate(dateStr) {
   }
 
   renderBandGrid(dateStr);
+
+  loadRdi(dateStr);
+
   if (state.selectedBand) loadImage(dateStr, state.selectedBand);
 }
 
@@ -346,6 +481,56 @@ function resetImage() {
     els.pivotImage.style.opacity = "0";
     els.pivotImage.src = "";
     els.currentInfo.textContent = "Sem dados";
+}
+
+// 3. Adicione a nova função loadRdi (pode ser colocada antes de loadImage)
+async function loadRdi(date) {
+  // Mostra a seção se estiver oculta
+  els.analysisSection.style.display = "block";
+  
+  // Estado de loading visual
+  els.rdiValue.textContent = "--";
+  els.rdiStatus.textContent = "Calculando...";
+  els.metricCard.className = "metric-card"; // Reseta classes de cor
+
+  try {
+    const url = `${CONFIG.baseUrl}/api/equipments/tiff-files/rdi/?id_ana=${state.currentIdAna}&date=${date}`;
+    
+    // A função fetchJson já retorna o conteúdo de 'data' ({ rdi: 96.00... })
+    const data = await fetchJson(url);
+    
+    if (data && data.rdi !== null && data.rdi !== undefined) {
+      const valor = parseFloat(data.rdi);
+      
+      // Formatação
+      els.rdiValue.textContent = valor.toFixed(2);
+      
+      // Lógica visual simples baseada no valor (exemplo hipotético)
+      // RDI alto geralmente é bom (sem estresse hídrico), baixo é ruim.
+      let statusText = "Nível Estável";
+      let statusClass = "status-good";
+
+      if (valor < 50) {
+         statusText = "Atenção: Déficit Hídrico";
+         statusClass = "status-danger";
+      } else if (valor < 80) {
+         statusText = "Alerta: Monitorar";
+         statusClass = "status-warning";
+      }
+
+      els.rdiStatus.textContent = statusText;
+      els.metricCard.classList.add(statusClass);
+
+    } else {
+      els.rdiValue.textContent = "N/A";
+      els.rdiStatus.textContent = "Dados indisponíveis";
+    }
+
+  } catch (error) {
+    console.error("Erro RDI:", error);
+    els.rdiValue.textContent = "Erro";
+    els.rdiStatus.textContent = "Falha ao obter índice";
+  }
 }
 
 async function loadImage(date, band) {
