@@ -1,6 +1,6 @@
 // --- CONFIGURAÇÕES ---
 const CONFIG = {
-  baseUrl: "http://localhost:8000"
+  baseUrl: "https://homolog.irridesk.com.br"
 };
 
 // --- CONFIGURAÇÃO VISUAL DAS BANDAS ---
