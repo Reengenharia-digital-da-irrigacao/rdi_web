@@ -1,6 +1,7 @@
 // --- CONFIGURAÇÕES ---
 const CONFIG = {
   baseUrl: "https://homolog.irridesk.com.br"
+  // baseUrl: "http://localhost:8000"
 };
 
 // --- CONFIGURAÇÃO VISUAL DAS BANDAS ---
@@ -201,7 +202,7 @@ els.farmSelect.addEventListener("change", async () => {
       // Exibe Nome e gpkg_reference para ajudar na identificação
       opt.textContent = `${eq.name}`;
       // Salva o id_ana como data attribute para fácil acesso
-      opt.dataset.ana = eq.gpkg_reference;
+      opt.dataset.ana = eq.id_ana;
       els.equipmentSelect.appendChild(opt);
     });
 
