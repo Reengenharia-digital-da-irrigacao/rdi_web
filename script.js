@@ -93,6 +93,63 @@ async function fetchJson(url) {
   return json.data;
 }
 
+async function fetchAllPages(initialUrl) {
+  let allResults = [];
+  let nextUrl = initialUrl;
+
+  // Proteção contra loop infinito
+  let loopCount = 0;
+  const MAX_LOOPS = 50; 
+
+  while (nextUrl && loopCount < MAX_LOOPS) {
+    try {
+      const data = await fetchJson(nextUrl);
+
+      // O fetchJson já retorna o conteúdo de 'data' da resposta da API
+      // Estrutura esperada em 'data': { count: 6, next: '...', results: [...] }
+
+      if (data && data.results && Array.isArray(data.results)) {
+        allResults = allResults.concat(data.results);
+
+        // AQUI ESTÁ A CORREÇÃO PRINCIPAL:
+        if (data.next) {
+          // 1. Cria um objeto URL a partir do link 'next' retornado pelo backend
+          // Ex: http://homolog.irridesk.com.br/api/farms/?limit=5&offset=5
+          const urlObj = new URL(data.next);
+
+          // 2. Força o uso da SUA baseUrl configurada (ex: localhost), ignorando o domínio que veio do backend
+          // Isso resolve o problema de CORS/Auth entre ambientes diferentes
+          // Removemos a barra final da CONFIG.baseUrl para evitar duplicidade (//)
+          const currentBase = CONFIG.baseUrl.replace(/\/$/, ""); 
+          
+          // urlObj.pathname + urlObj.search pega "/api/farms/?limit=5&offset=5"
+          nextUrl = `${currentBase}${urlObj.pathname}${urlObj.search}`;
+        } else {
+          nextUrl = null;
+        }
+
+      } else if (Array.isArray(data)) {
+        // Caso a API retorne uma lista direta sem paginação
+        allResults = data;
+        nextUrl = null;
+      } else {
+        // Formato desconhecido, interrompe
+        nextUrl = null;
+      }
+
+      loopCount++;
+
+    } catch (err) {
+      console.error("Erro na paginação:", err);
+      // Se der erro no meio do caminho, retornamos o que já conseguimos coletar
+      // em vez de quebrar tudo e não mostrar nada.
+      return allResults.length > 0 ? allResults : []; 
+    }
+  }
+
+  return allResults;
+}
+
 // -------------------------
 // AUTH (MANUAL)
 // -------------------------
@@ -153,8 +210,7 @@ async function loadFarms() {
     els.farmSelect.disabled = true;
 
     // Busca apenas a primeira página para o exemplo
-    const data = await fetchJson(`${CONFIG.baseUrl}/api/farms/`);
-    const results = data.results || [];
+    const results = await fetchAllPages(`${CONFIG.baseUrl}/api/farms/`);
     
     state.farms = results;
     
@@ -190,8 +246,7 @@ els.farmSelect.addEventListener("change", async () => {
   try {
     els.equipmentSelect.innerHTML = "<option>Carregando...</option>";
     
-    const data = await fetchJson(`${CONFIG.baseUrl}/api/equipments?farm__id=${farmId}`);
-    const results = data.results || [];
+    const results = await fetchAllPages(`${CONFIG.baseUrl}/api/equipments?farm__id=${farmId}`);
 
     state.equipments = results;
 
