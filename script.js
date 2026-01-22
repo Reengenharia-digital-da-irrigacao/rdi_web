@@ -1,6 +1,6 @@
 // --- CONFIGURAÇÕES ---
 const CONFIG = {
-  baseUrl: "https://homolog.irridesk.com.br"
+  baseUrl: "https://prod.irridesk.com.br"
   // baseUrl: "http://localhost:8000"
 };
 
